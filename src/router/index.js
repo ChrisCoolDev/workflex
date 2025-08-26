@@ -27,6 +27,7 @@ const router = createRouter({
     {
       path: '/politique-de-confidentialite',
       component: PrivatePolicy,
+      name: 'politiqueDeConfidentialite',
     },
     {
       path: '/poster-un-job',

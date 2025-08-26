@@ -1,0 +1,36 @@
+<script setup>
+import SecondaryButton from '../basis/SecondaryButton.vue'
+import SectionWrapper from '../basis/SectionWrapper.vue'
+import interimHeader from '@/assets/images/employerHeader.png'
+import whatsappWidget from '@/assets/images/whatsappWidget.svg'
+</script>
+<template>
+  <SectionWrapper section-colors="#F9F9F9">
+    <header
+      class="flex items-center sm:justify-between py-[60px] max-sm:flex-col max-sm:py-[40px] max-sm:space-y-16"
+    >
+      <div class="max-w-[657px] w-full">
+        <h1 class="text-[56px] font-bold leading-[110%] text-primary mb-4 max-sm:text-[40px]">
+          L'interim qui s'adapte a vous
+        </h1>
+        <p class="text-xs text-greyScale300 leading-tigh mb-[48px] max-sm:mb-[30px]">
+          Vous recherchez du personnel fiable, réactif et disponible selon vos besoins? Chez
+          WorkFlex, nous révolutionnons l’intérim avec une approche 100 % flexible. <br /><br />
+          Notre mission : vous proposer des profils motivés et immédiatement disponibles, que ce
+          soit pour des missions ponctuelles, des remplacements urgents ou des renforts saisonniers.
+        </p>
+        <div>
+          <SecondaryButton label="Poster une mission" route="/poster-un-job" />
+        </div>
+      </div>
+      <div class="relative">
+        <img :src="interimHeader" alt="" />
+        <img
+          :src="whatsappWidget"
+          alt=""
+          class="absolute z-10 left-[-64px] bottom-[70px] max-sm:hidden"
+        />
+      </div>
+    </header>
+  </SectionWrapper>
+</template>

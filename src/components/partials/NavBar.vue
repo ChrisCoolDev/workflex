@@ -72,16 +72,16 @@ const onToggle = () => {
       </div>
       <ul class="flex items-center space-x-[48px] max-sm:hidden">
         <li>
-          <a href="" class="text-secondary font-semibold text-xs">Acceuil</a>
+          <a href="/" class="text-secondary font-semibold text-xs">Acceuil</a>
         </li>
         <li>
-          <a href="" class="text-xs text-greyScale300">A propos de nous</a>
+          <a href="/" class="text-xs text-greyScale300">A propos de nous</a>
         </li>
         <li>
-          <a href="" class="text-xs text-greyScale300">Comment ca marche</a>
+          <a href="/" class="text-xs text-greyScale300">Comment ca marche</a>
         </li>
         <li>
-          <a href="" class="text-xs text-greyScale300">Pourquoi nous choisir</a>
+          <a href="/" class="text-xs text-greyScale300">Pourquoi nous choisir</a>
         </li>
       </ul>
       <div class="flex justify-center text-xs md:justify-start md:col-span-1">

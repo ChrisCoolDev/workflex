@@ -9,14 +9,14 @@ const formData = ref({
   nom: '',
   prenom: '',
   dateNaissance: '',
-  sexe: 'Homme', // Valeur par défaut
+  sexe: 'Homme',
   ville: '',
   arrondissement: '',
   quartier: '',
   statut: '',
   email: '',
   telephone: '',
-  permisConduire: 'Pas de permis', // Valeur par défaut
+  permisConduire: 'Pas de permis',
   commentaire: '',
 })
 
@@ -57,14 +57,12 @@ const cvFile = ref(null)
 const onFileChange = (event) => {
   const file = event.target.files[0]
   if (file) {
-    // Validation du fichier
     const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
       errorMessage.value = 'Le fichier est trop volumineux (max 10MB)'
       return
     }
 
-    // Types de fichiers acceptés
     const allowedTypes = [
       'application/pdf',
       'application/msword',
@@ -78,24 +76,151 @@ const onFileChange = (event) => {
 
     cvFile.value = file
     cvFileName.value = file.name
-    errorMessage.value = '' // Effacer les erreurs précédentes
+    errorMessage.value = ''
   } else {
     cvFile.value = null
     cvFileName.value = ''
   }
 }
 
-// Formater la date en jj-mm-yyyy
+// Fonction pour valider une date
+const isValidDate = (dateString) => {
+  if (!dateString || !dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
+    return false
+  }
+
+  const [day, month, year] = dateString.split('-').map(Number)
+
+  // Vérifications de base
+  if (month < 1 || month > 12) return false
+  if (day < 1 || day > 31) return false
+  if (year < 1900 || year > new Date().getFullYear()) return false
+
+  // Créer l'objet Date (attention: mois en JavaScript commence à 0)
+  const date = new Date(year, month - 1, day)
+
+  // Vérifier que la date créée correspond exactement aux valeurs saisies
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return false
+  }
+
+  // Vérifier que la personne a au moins 16 ans et moins de 80 ans
+  const today = new Date()
+  const age = today.getFullYear() - year
+  const monthDiff = today.getMonth() - (month - 1)
+  const dayDiff = today.getDate() - day
+
+  const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+
+  if (actualAge < 16 || actualAge > 80) return false
+
+  return true
+}
+
+// Formater la date en jj-mm-yyyy avec possibilité d'effacer facilement
 const formatDateInput = (event) => {
-  let value = event.target.value.replace(/\D/g, '')
+  let value = event.target.value
+
+  // Si l'utilisateur efface complètement, permettre l'effacement
+  if (value === '') {
+    formData.value.dateNaissance = ''
+    event.target.classList.remove('border-red-500', 'border-green-500')
+    return
+  }
+
+  // Enlever tous les caractères non numériques
+  value = value.replace(/\D/g, '')
+
+  // Formater progressivement
   if (value.length >= 2) {
     value = value.substring(0, 2) + '-' + value.substring(2)
   }
   if (value.length >= 5) {
     value = value.substring(0, 5) + '-' + value.substring(5, 9)
   }
+
   event.target.value = value
   formData.value.dateNaissance = value
+
+  // Validation en temps réel pour l'affichage visuel
+  if (value.length === 10) {
+    const input = event.target
+    if (isValidDate(value)) {
+      input.classList.remove('border-red-500')
+      input.classList.add('border-green-500')
+    } else {
+      input.classList.remove('border-green-500')
+      input.classList.add('border-red-500')
+    }
+  } else {
+    // Enlever les couleurs si la date n'est pas complète
+    event.target.classList.remove('border-red-500', 'border-green-500')
+  }
+}
+
+// Validation du numéro de téléphone camerounais
+const isValidPhoneNumber = (phone) => {
+  // Nettoyer le numéro
+  const cleanPhone = phone.replace(/\s+/g, '').replace(/[^\d+]/g, '')
+
+  // Formats acceptés pour le Cameroun :
+  // +237XXXXXXXXX (10 chiffres après +237)
+  // 237XXXXXXXXX (10 chiffres après 237)
+  // 6XXXXXXXX ou 2XXXXXXXX (9 chiffres commençant par 6 ou 2)
+
+  const patterns = [
+    /^\+237[62]\d{8}$/, // +237 suivi de 6 ou 2 puis 8 chiffres
+    /^237[62]\d{8}$/, // 237 suivi de 6 ou 2 puis 8 chiffres
+    /^[62]\d{8}$/, // 6 ou 2 suivi de 8 chiffres
+  ]
+
+  return patterns.some((pattern) => pattern.test(cleanPhone))
+}
+
+// Formater le numéro de téléphone en temps réel
+const formatPhoneInput = (event) => {
+  let value = event.target.value.replace(/[^\d+\s]/g, '') // Garder seulement chiffres, +, et espaces
+
+  // Limiter la longueur
+  if (value.length > 17) {
+    // +237 6XX XXX XXX = 17 caractères max
+    value = value.substring(0, 17)
+  }
+
+  event.target.value = value
+  formData.value.telephone = value
+
+  // Validation visuelle
+  if (value.length > 8) {
+    // Commencer la validation après 8 caractères
+    const input = event.target
+    if (isValidPhoneNumber(value)) {
+      input.classList.remove('border-red-500')
+      input.classList.add('border-green-500')
+    } else {
+      input.classList.remove('border-green-500')
+      input.classList.add('border-red-500')
+    }
+  } else {
+    event.target.classList.remove('border-red-500', 'border-green-500')
+  }
+}
+
+// Permettre l'effacement facile de la date avec les touches Delete/Backspace
+const handleDateKeydown = (event) => {
+  // Si l'utilisateur appuie sur Delete ou Ctrl+A puis une touche, permettre l'effacement complet
+  if (event.key === 'Delete' || (event.ctrlKey && event.key === 'a')) {
+    // Ne rien faire de spécial, laisser le comportement par défaut
+    return
+  }
+
+  // Si Backspace et le champ est vide ou presque vide, permettre l'effacement complet
+  if (event.key === 'Backspace' && event.target.value.length <= 1) {
+    event.target.value = ''
+    formData.value.dateNaissance = ''
+    event.target.classList.remove('border-red-500', 'border-green-500')
+    event.preventDefault()
+  }
 }
 
 // États pour la soumission
@@ -103,32 +228,75 @@ const isSubmitting = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
 const uploadProgress = ref(0)
+const formErrors = ref({})
 
-// Validation des données
+// Validation complète des données
 const validateForm = () => {
   const errors = []
+  formErrors.value = {}
 
-  if (!formData.value.nom.trim()) errors.push('Le nom est requis')
-  if (!formData.value.prenom.trim()) errors.push('Le prénom est requis')
-  if (!formData.value.dateNaissance) errors.push('La date de naissance est requise')
-  if (!formData.value.ville) errors.push('La ville est requise')
-  if (!formData.value.arrondissement) errors.push("L'arrondissement est requis")
-  if (!formData.value.quartier.trim()) errors.push('Le quartier est requis')
-  if (!formData.value.statut) errors.push('Le statut est requis')
-  if (!formData.value.email.trim()) errors.push("L'email est requis")
-  if (!formData.value.telephone.trim()) errors.push('Le téléphone est requis')
-  if (!cvFile.value) errors.push('Le CV est requis')
-
-  // Validation email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (formData.value.email && !emailRegex.test(formData.value.email)) {
-    errors.push("Format d'email invalide")
+  // Validation des champs obligatoires
+  if (!formData.value.nom.trim()) {
+    errors.push('Le nom est requis')
+    formErrors.value.nom = true
   }
 
-  // Validation date (format jj-mm-yyyy)
-  const dateRegex = /^\d{2}-\d{2}-\d{4}$/
-  if (formData.value.dateNaissance && !dateRegex.test(formData.value.dateNaissance)) {
-    errors.push('Format de date invalide (jj-mm-yyyy)')
+  if (!formData.value.prenom.trim()) {
+    errors.push('Le prénom est requis')
+    formErrors.value.prenom = true
+  }
+
+  if (!formData.value.dateNaissance) {
+    errors.push('La date de naissance est requise')
+    formErrors.value.dateNaissance = true
+  } else if (!isValidDate(formData.value.dateNaissance)) {
+    errors.push('La date de naissance est invalide')
+    formErrors.value.dateNaissance = true
+  }
+
+  if (!formData.value.ville) {
+    errors.push('La ville est requise')
+    formErrors.value.ville = true
+  }
+
+  if (!formData.value.arrondissement) {
+    errors.push("L'arrondissement est requis")
+    formErrors.value.arrondissement = true
+  }
+
+  if (!formData.value.quartier.trim()) {
+    errors.push('Le quartier est requis')
+    formErrors.value.quartier = true
+  }
+
+  if (!formData.value.statut) {
+    errors.push('Le statut est requis')
+    formErrors.value.statut = true
+  }
+
+  if (!formData.value.email.trim()) {
+    errors.push("L'email est requis")
+    formErrors.value.email = true
+  } else {
+    // Validation email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.value.email)) {
+      errors.push("Format d'email invalide")
+      formErrors.value.email = true
+    }
+  }
+
+  if (!formData.value.telephone.trim()) {
+    errors.push('Le téléphone est requis')
+    formErrors.value.telephone = true
+  } else if (!isValidPhoneNumber(formData.value.telephone)) {
+    errors.push('Numéro de téléphone invalide (format camerounais requis)')
+    formErrors.value.telephone = true
+  }
+
+  if (!cvFile.value) {
+    errors.push('Le CV est requis')
+    formErrors.value.cv = true
   }
 
   return errors
@@ -142,10 +310,20 @@ const submitForm = async () => {
   successMessage.value = ''
   errorMessage.value = ''
 
-  // Validation
+  // Validation complète
   const validationErrors = validateForm()
   if (validationErrors.length > 0) {
-    errorMessage.value = validationErrors.join(', ')
+    errorMessage.value = `Veuillez corriger les erreurs suivantes : ${validationErrors.join(', ')}`
+
+    // Scroll vers le premier champ en erreur
+    setTimeout(() => {
+      const firstErrorField = document.querySelector('.border-red-500, .error-field')
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        firstErrorField.focus()
+      }
+    }, 100)
+
     return
   }
 
@@ -174,9 +352,7 @@ const submitForm = async () => {
         throw new Error('Erreur upload CV: ' + uploadError.message)
       }
 
-      // Récupérer l'URL publique
       const { data: urlData } = supabase.storage.from('cv-uploads').getPublicUrl(`cvs/${fileName}`)
-
       cvUrl = urlData.publicUrl
       uploadProgress.value = 50
     }
@@ -263,10 +439,17 @@ const resetForm = () => {
 
   cvFileName.value = ''
   cvFile.value = null
+  formErrors.value = {}
 
-  // Reset l'input file
+  // Reset l'input file et les styles de validation
   const fileInput = document.getElementById('cv')
   if (fileInput) fileInput.value = ''
+
+  // Nettoyer les classes de validation visuelle
+  document.querySelectorAll('.border-red-500, .border-green-500').forEach((el) => {
+    el.classList.remove('border-red-500', 'border-green-500')
+    el.classList.add('border-[#E7EBEE]')
+  })
 }
 </script>
 
@@ -312,15 +495,17 @@ const resetForm = () => {
               <div class="flex space-x-8 max-sm:flex-col max-sm:space-x-0 max-sm:space-y-6">
                 <div class="space-y-[6px] sm:max-w-[240px] w-full">
                   <label for="nom" class="text-[14px] font-medium leading-[20px] text-greyScale300">
-                    Noms <span>*</span>
+                    Noms <span class="text-red-500">*</span>
                   </label>
                   <input
                     id="nom"
                     v-model="formData.nom"
                     type="text"
                     placeholder="chris"
-                    required
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full transition-colors',
+                      formErrors.nom ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   />
                 </div>
                 <div class="space-y-[6px] sm:max-w-[240px] w-full">
@@ -328,15 +513,17 @@ const resetForm = () => {
                     for="prenom"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Prénoms <span>*</span>
+                    Prénoms <span class="text-red-500">*</span>
                   </label>
                   <input
                     id="prenom"
                     v-model="formData.prenom"
                     type="text"
-                    placeholder="sultan"
-                    required
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full"
+                    placeholder="idriss"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full transition-colors',
+                      formErrors.prenom ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   />
                 </div>
               </div>
@@ -348,7 +535,7 @@ const resetForm = () => {
                     for="dateNaissance"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Date de naissance <span>*</span>
+                    Date de naissance <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
                     <input
@@ -357,9 +544,14 @@ const resetForm = () => {
                       type="text"
                       placeholder="jj-mm-yyyy"
                       maxlength="10"
-                      required
                       @input="formatDateInput"
-                      class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full pr-10"
+                      @keydown="handleDateKeydown"
+                      :class="[
+                        'border border-solid rounded-lg px-[14px] py-[10px] w-full pr-10 transition-colors',
+                        formErrors.dateNaissance
+                          ? 'border-red-500 error-field'
+                          : 'border-[#E7EBEE]',
+                      ]"
                     />
                     <div
                       class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
@@ -385,12 +577,11 @@ const resetForm = () => {
                     for="sexe"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Sexe <span>*</span>
+                    Sexe <span class="text-red-500">*</span>
                   </label>
                   <select
                     id="sexe"
                     v-model="formData.sexe"
-                    required
                     class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full appearance-none"
                   >
                     <option v-for="sexe in sexeOptions" :key="sexe" :value="sexe">
@@ -406,14 +597,16 @@ const resetForm = () => {
                   for="ville"
                   class="text-[14px] font-medium leading-[20px] text-greyScale300 block"
                 >
-                  Ville <span>*</span>
+                  Ville <span class="text-red-500">*</span>
                 </label>
                 <select
                   id="ville"
                   v-model="formData.ville"
-                  required
                   @change="onVilleChange"
-                  class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full appearance-none"
+                  :class="[
+                    'border border-solid rounded-lg px-[14px] py-[10px] w-full appearance-none transition-colors',
+                    formErrors.ville ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                  ]"
                 >
                   <option value="">Choisir votre ville</option>
                   <option v-for="ville in villeOptions" :key="ville" :value="ville">
@@ -429,14 +622,16 @@ const resetForm = () => {
                     for="arrondissement"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300 block"
                   >
-                    Arrondissement <span>*</span>
+                    Arrondissement <span class="text-red-500">*</span>
                   </label>
                   <select
                     id="arrondissement"
                     v-model="formData.arrondissement"
-                    required
                     :disabled="!formData.ville"
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full appearance-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed',
+                      formErrors.arrondissement ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   >
                     <option value="">Choisir l'arrondissement</option>
                     <option
@@ -453,15 +648,17 @@ const resetForm = () => {
                     for="quartier"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300 block"
                   >
-                    Quartier <span>*</span>
+                    Quartier <span class="text-red-500">*</span>
                   </label>
                   <input
                     id="quartier"
                     v-model="formData.quartier"
                     type="text"
                     placeholder="Ex : Kotto, C Pizza"
-                    required
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full transition-colors',
+                      formErrors.quartier ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   />
                 </div>
               </div>
@@ -472,13 +669,15 @@ const resetForm = () => {
                   for="statut"
                   class="text-[14px] font-medium leading-[20px] text-greyScale300"
                 >
-                  Statut <span>*</span>
+                  Statut <span class="text-red-500">*</span>
                 </label>
                 <select
                   id="statut"
                   v-model="formData.statut"
-                  required
-                  class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full appearance-none"
+                  :class="[
+                    'border border-solid rounded-lg px-[14px] py-[10px] w-full appearance-none transition-colors',
+                    formErrors.statut ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                  ]"
                 >
                   <option value="">Choisir votre statut</option>
                   <option v-for="statut in statutOptions" :key="statut" :value="statut">
@@ -494,15 +693,17 @@ const resetForm = () => {
                     for="email"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Email <span>*</span>
+                    Email <span class="text-red-500">*</span>
                   </label>
                   <input
                     id="email"
                     v-model="formData.email"
                     type="email"
                     placeholder="chris@example.com"
-                    required
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full transition-colors',
+                      formErrors.email ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   />
                 </div>
                 <div class="space-y-[6px] sm:max-w-[240px] w-full">
@@ -510,16 +711,20 @@ const resetForm = () => {
                     for="telephone"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Téléphone <span>*</span>
+                    Téléphone <span class="text-red-500">*</span>
                   </label>
                   <input
-                    id="telephone"
+                    id="telephone (whatsapp)"
                     v-model="formData.telephone"
                     type="tel"
                     placeholder="+237 6XX XXX XXX"
-                    required
-                    class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full"
+                    @input="formatPhoneInput"
+                    :class="[
+                      'border border-solid rounded-lg px-[14px] py-[10px] w-full transition-colors',
+                      formErrors.telephone ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                    ]"
                   />
+                  <p class="text-[13px] text-gray-500">Format : +237 6XX XXX XXX ou 6XX XXX XXX</p>
                 </div>
               </div>
 
@@ -530,7 +735,7 @@ const resetForm = () => {
                     for="permis"
                     class="text-[14px] font-medium leading-[20px] text-greyScale300"
                   >
-                    Permis de conduire <span>*</span>
+                    Permis de conduire <span class="text-red-500">*</span>
                   </label>
                   <select
                     id="permis"
@@ -544,19 +749,21 @@ const resetForm = () => {
                 </div>
                 <div class="space-y-[6px] sm:max-w-[240px] w-full">
                   <label for="cv" class="text-[14px] font-medium leading-[20px] text-greyScale300">
-                    CV <span>*</span>
+                    CV <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
                     <input
                       id="cv"
                       type="file"
                       accept=".pdf,.doc,.docx"
-                      required
                       @change="onFileChange"
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div
-                      class="border border-solid border-[#E7EBEE] rounded-lg px-[14px] py-[10px] w-full bg-white flex items-center justify-between cursor-pointer"
+                      :class="[
+                        'border border-solid rounded-lg px-[14px] py-[10px] w-full bg-white flex items-center justify-between cursor-pointer transition-colors',
+                        formErrors.cv ? 'border-red-500 error-field' : 'border-[#E7EBEE]',
+                      ]"
                     >
                       <div class="flex items-center space-x-2">
                         <svg
@@ -608,9 +815,9 @@ const resetForm = () => {
             <button
               type="submit"
               :disabled="isSubmitting"
-              class="py-[14px] px-[20px] text-center bg-[#0B2E4C] text-white text-xs rounded-base mt-8 w-full"
+              class="py-[14px] px-[20px] text-center bg-[#0B2E4C] text-white text-xs rounded-base mt-8 w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ isSubmitting ? 'Envoi en cours' : 'Envoyer ma candidature' }}
+              {{ isSubmitting ? 'Envoi en cours...' : 'Envoyer ma candidature' }}
             </button>
           </form>
         </div>

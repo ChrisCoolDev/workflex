@@ -67,8 +67,8 @@ import WhyUsCard from '../basis/WhyUsCard.vue'
             </svg>
           </WhyUsCard>
           <WhyUsCard
-            title="Payment trasparent"
-            content="Une fois votre mission achevée, les paiements seront fait dans les délais impartis."
+            title="Paiement trasparent"
+            content="Une fois votre mission achevée, les paiements seront faits dans les délais impartis."
           >
             <svg
               class="vuesax-outline-card-pos2"
